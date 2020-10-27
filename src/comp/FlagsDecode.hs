@@ -629,7 +629,8 @@ defaultFlags bluespecdir = Flags {
         verilogFilter = [],
         warnActionShadowing = True,
         warnMethodUrgency = True,
-        warnUndetPred = False
+        warnUndetPred = False,
+        warnUnusedImports = False
         }
 
 -- Default path value replaced in adjustFinalFlags
@@ -1685,6 +1686,10 @@ externalFlags = [
         ("warn-undet-predicate",
          (Toggle (\f x -> f {warnUndetPred=x}) (showIfTrue warnUndetPred),
           "warn when a rule or method predicate has an undetermined value", Hidden)),
+
+        ("warn-unused-imports",
+         (Toggle (\f x -> f {warnUnusedImports=x}) (showIfTrue warnUnusedImports),
+          "warn when a module does not used imported names", Hidden)),
 
         ("Werror",
          (NoArg

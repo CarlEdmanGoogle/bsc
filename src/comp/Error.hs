@@ -1189,6 +1189,8 @@ data ErrMsg =
         -- XXX these should contain the type of the constructor
         | EConMismatchNumArgs  String{-String-}      Integer Integer
         | EPartialConMismatchNumArgs  String String{-String-}Integer Integer Integer
+        
+        | WUnusedImport String          -- ^ import of package that is not used
         deriving (Eq,Show)
 
 instance PPrint ErrMsg where
@@ -1870,6 +1872,10 @@ getErrorText (ESVPNoId kw) =
 getErrorText (WUnusedDef i) =
     (Parse 223, empty,
      s2par ("Definition of " ++ quote i ++ " is not used."))
+
+getErrorText (WUnusedImport i) =
+    (Parse 224, empty,
+     s2par ("Import of " ++ quote i ++ " is not used."))
 
 -- Type check and elaboration errors
 
