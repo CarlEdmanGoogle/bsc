@@ -384,12 +384,9 @@ compilePackage
     -- Generate a global symbol table
     -- This is the second out of 3 times
     -- note that mkSymTab requires that imports be topologically sorted
-    start flags DFsymbols1
+    start flags DFsympostopparse
     symt00 <- mkSymTab errh mop
-    t <- dump errh flags t DFsymbols1 dumpnames symt00
-
-    when (warnUnusedImports flags) $ do
-        print symt00
+    t <- dump errh flags t DFsympostopparse dumpnames symt00
 
     -- whether we are doing code generation for modules
     let generating = backend flags /= Nothing
@@ -406,9 +403,9 @@ compilePackage
 
     -- Rebuild the symbol table because GenWrap added new types
     -- and typeclass instances for those types
-    start flags DFsymbols2
+    start flags DFsympostgenwrap
     symt1 <- mkSymTab errh mwrp
-    t <- dump errh flags t DFsymbols2 dumpnames symt1
+    t <- dump errh flags t DFsympostgenwrap dumpnames symt1
 
     -- Re-add function definitions for `noinline'
     mfawrp <- addFuncWrap errh symt1 funcs mwrp
@@ -418,9 +415,9 @@ compilePackage
     mder <- derive errh flags symt1 mfawrp
     t <- dump errh flags t DFderiving dumpnames mder
 
-    start flags DFsymbols3
+    start flags DFsympostderiving
     symt11 <- mkSymTab errh mder
-    t <- dump errh flags t DFsymbols3 dumpnames symt11
+    t <- dump errh flags t DFsympostderiving dumpnames symt11
 
     -- Reduce the contexts as far as possible
     start flags DFctxreduce
@@ -431,9 +428,9 @@ compilePackage
     -- Third time's the charm!
     -- XXX could reuse part of the old!
     -- note that mkSymTab requires that imports be topologically sorted
-    start flags DFsymbols4
+    start flags DFsympostctxreduce
     symt <- mkSymTab errh mctx
-    t <- dump errh flags t DFsymbols4 dumpnames symt
+    t <- dump errh flags t DFsympostctxreduce dumpnames symt
 
     -- Turn instance declarations into ordinary definitions
     start flags DFconvinst
@@ -517,12 +514,12 @@ compilePackage
     -- not just those that are user visible.
     -- XXX This is needed for inserting RWire primitives in AAddSchedAssumps
     -- XXX but is it needed anywhere else?
-    start flags DFsymbols5
+    start flags DFsympostbinary
     -- XXX The way we construct the symtab is to replace the user-visible
     -- XXX imports with the full imports.
     let mint = replaceImports mctx impsigs
     internalSymt <- mkSymTab errh mint
-    t <- dump errh flags t DFsymbols5 dumpnames mint
+    t <- dump errh flags t DFsympostbinary dumpnames mint
 
     start flags DFfixup
     let (imodf, alldefsList) = fixupDefs imod binmods
