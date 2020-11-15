@@ -28,7 +28,7 @@ import SymTab
 import Assump
 import CSubst(cSubstN)
 import CFreeVars(getFVC, getFTCC)
-import Util(separate, apFst, quote)
+import Util(separate, apFst, quote, fst3, snd3, thd)
 
 cTypeCheck :: ErrorHandle -> Flags -> SymTab -> CPackage -> IO (CPackage, Bool)
 cTypeCheck errh flags symtab (CPackage name exports imports fixs defns includes) = do
@@ -41,12 +41,12 @@ cTypeCheck errh flags symtab (CPackage name exports imports fixs defns includes)
 tiDefns :: ErrorHandle -> SymTab -> Flags -> [CDefn] -> IO ([CDefn], [WMsg], Bool)
 tiDefns errh s flags ds = do
   let ai = allowIncoherentMatches flags
-  let checkDef d = (defErr, snd defTI)
+  let checkDef d = (defErr, snd3 defTI, thd defTI)
         where defTI  = runTI flags ai s $ tiOneDef d
-              defErr = case (fst defTI) of
+              defErr = case (fst3 defTI) of
                           (Left emsgs)  -> Left emsgs
                           (Right cdefn) -> rmFreeTypeVars cdefn
-  let (checks, wss) = unzip (map checkDef ds)
+  let (checks, wss, usedPkgss) = unzip3 (map checkDef ds)
   let (errors, ds') = apFst concat $ separate checks
   let have_errors = not (null errors)
   let mkErrorDef (Left _)  (CValueSign (CDef i t _)) = Just (mkPoisonedCDefn i t)
@@ -57,11 +57,12 @@ tiDefns errh s flags ds = do
   let error_defs = catMaybes (zipWith mkErrorDef checks ds)
   let checked_error_defs = map checkDef error_defs
   let (double_error_msgs, error_defs') =
-          apFst concat $ separate $ map fst checked_error_defs
+          apFst concat $ separate $ map fst3 checked_error_defs
   -- XXX: we give up - some type signatures are bogus
   when ((not (null double_error_msgs)) || (have_errors && not (enablePoisonPills flags))) $
       bsError errh (nub errors) -- the underyling error should be in errors
   when (have_errors && enablePoisonPills flags) $ bsErrorNoExit errh errors
+  putStrLn $ ppReadable $ S.unions usedPkgss
   return (ds' ++ error_defs', concat wss, have_errors)
 
 nullAssump :: [Assump]

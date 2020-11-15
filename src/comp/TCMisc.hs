@@ -700,6 +700,7 @@ findAssump i as =
                 Nothing -> return ()
                 Just str -> twarn (getPosition i,
                                    WDeprecated "definition" (pfpString i) str)
+            usedId $ getAssumpId a
             return (updAssumpPos i a)
     sc : _ -> return (i :>: sc)
 
@@ -785,7 +786,7 @@ expandSynN :: Flags -> SymTab -> Type -> Type
 expandSynN flags s t =
    -- should only need to match instances for coherent typeclasses
    -- XXX user code corner-case?
-   case fst $ runTI flags False s $
+   case fst3 $ runTI flags False s $
                 do addBoundTVs (tv t) -- to prevent generated variable capture
                    normT t
    of  Left msg -> internalError ("expandSynN " ++ ppReadable msg)

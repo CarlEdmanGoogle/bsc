@@ -17,7 +17,7 @@ import TCMisc
 import SymTab
 import MakeSymTab(convCQTypeWithAssumps)
 import VModInfo(VArgInfo(..))
-import Util(concatMapM)
+import Util(concatMapM, fst3)
 
 import Debug.Trace(traceM)
 import IOUtil(progArgs)
@@ -29,7 +29,7 @@ cCtxReduceIO :: ErrorHandle -> Flags -> SymTab -> CPackage -> IO CPackage
 cCtxReduceIO errh flags s (CPackage mi exps imps fixs ds includes) =
     -- ctxreduce should not match incoherent instances
     -- this will preserve contexts to be handled in typechecking
-    case fst (runTI flags False s (mapM ctxRed ds)) of
+    case fst3 (runTI flags False s (mapM ctxRed ds)) of
     -- XXX This assumes no warnings in the Left case!  If we want to handle errors and
     -- warnings better, return an ErrorMonad.
     Left msgs -> bsError errh msgs
@@ -38,7 +38,7 @@ cCtxReduceIO errh flags s (CPackage mi exps imps fixs ds includes) =
 cCtxReduceDef :: Flags -> SymTab -> CDefn -> Either [EMsg] CDefn
 cCtxReduceDef flags s def =
     -- see comment in cCtxReduceIO
-    case fst (runTI flags False s (ctxRed def)) of
+    case fst3 (runTI flags False s (ctxRed def)) of
     Left msgs -> Left msgs
     Right t   -> Right t
 
