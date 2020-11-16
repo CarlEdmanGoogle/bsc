@@ -247,7 +247,6 @@ twarn :: WMsg -> TI ()
 twarn w = lift (modify (addWarning w))
   where addWarning w s = s { tsWarns = w:(tsWarns s) }
 
-
 -- XXX maybe someday get rid of this function and replace with catchError
 handle :: TI a -> (EMsgs -> TI a) -> TI a
 handle = catchError
@@ -491,14 +490,17 @@ findTyCon :: Id -> TI TyCon
 findTyCon i = do
     r <- getSymTab
     case findType r i of
-     Just (TypeInfo (Just i') k _ ts@(TItype _ t)) ->
+     Just (TypeInfo (Just i') k _ ts@(TItype _ t)) -> do
+        usedId i'
         -- It's a type alias.  If the left element of the alias is a
         -- constructor, find the type of that constructor; otherwise,
         -- give up and return the info that's available.
         case (leftCon t) of
             Just aliased_i -> findTyCon aliased_i
             Nothing -> return (TyCon i' (Just k) ts)
-     Just (TypeInfo (Just i') k _ ts) -> return (TyCon i' (Just k) ts)
+     Just (TypeInfo (Just i') k _ ts) -> do
+       usedId i'
+       return (TyCon i' (Just k) ts)
      Just (TypeInfo Nothing _ _ _) ->
         internalError ("findTyCon: unexpected numeric or string type: " ++ ppReadable i)
      Nothing -> errorAtId EUnboundTyCon i

@@ -14,7 +14,7 @@ import System.Directory(getDirectoryContents, doesFileExist, getCurrentDirectory
 import System.Time(getClockTime, ClockTime(TOD)) -- XXX: from old-time package
 import Data.Char(isSpace, toLower, ord)
 import Data.List(intersect, nub, partition, intersperse, sort,
-            isPrefixOf, isSuffixOf, unzip5, intercalate, sortOn)
+            isPrefixOf, isSuffixOf, unzip5, intercalate)
 import Data.Time.Clock.POSIX(getPOSIXTime)
 import Data.Maybe(isJust, isNothing {-, fromMaybe-})
 import Numeric(showOct)
@@ -25,10 +25,11 @@ import Control.Concurrent(forkIO)
 import Control.Concurrent.MVar(newEmptyMVar, putMVar, takeMVar)
 import qualified Control.Exception as CE
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 import ListMap(lookupWithDefault)
-import ListUtil(listDifference)
 import SCC(scc)
+
 
 -- utility libs
 import ParseOp
@@ -367,7 +368,7 @@ compilePackage
             ]
 
     -- Cache the list of packages expressly imported
-    let imppkgs = sortOn getIdString [i | CImpId _ i <- pkgImp]
+    let imppkgs = S.fromList [i | CImpId _ i <- pkgImp]
 
     start flags DFimports
     -- Read imported signatures
@@ -535,11 +536,10 @@ compilePackage
     stats flags DFisimplify imods
 
     when (warnUnusedImports flags) $ do
-      let onIdString i j = getIdString i == getIdString j
-      let usepkgs = sortOn getIdString $ getUsedPackages min
-      let unusedpkgs = listDifference onIdString imppkgs usepkgs
+      let usepkgs = S.fromList $ getUsedPackages min
+      let unusedpkgs = S.difference imppkgs usepkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      bsWarning errh $ map toWErr $ sort unusedpkgs
+      bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     let orderGens :: IPackage HeapData -> [WrapInfo] -> [WrapInfo]
         orderGens (IPackage pid _ _ ds) gs =

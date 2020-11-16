@@ -35,8 +35,6 @@ import Pragma
 -- XXX
 import IOUtil(progArgs)
 
-import Debug.Trace
-
 infix 6 >>>> , >>>>> , >>>>>> , >>>>>>> , {- >>>>>>>> , -} >>>>>>>>>
 
 -- XXX
