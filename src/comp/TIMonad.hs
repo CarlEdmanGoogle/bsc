@@ -16,7 +16,7 @@ module TIMonad(
         bitCls,
         literalCls, realLiteralCls, sizedLiteralCls, stringLiteralCls,
         numEqCls,
-        updAssumpPos,
+        updAssumpPos, getAssumpId, usedId,
         incrementSatStack, decrementSatStack, getSatStack, mkTSSatElement, TSSatElement,
               pushSatStackContext, popSatStackContext
         , tiRecoveringFromError
@@ -46,7 +46,7 @@ import ErrorTCompat
 import Control.Monad.State
 import Data.List(partition)
 import Util(headOrErr)
-
+import qualified Data.Set as S
 -------
 
 import Debug.Trace(traceM)
@@ -69,7 +69,8 @@ data TStatePersistent = TStatePersistent {
    -- whether TI monad allows general incoherent instance matches
    -- or only for marked typeclasses
    tsAllowIncoherent :: Bool,
-   tsWarns :: [WMsg] -- accumulated warning messages
+   tsWarns :: [WMsg], -- accumulated warning messages
+   tsUsed :: S.Set Id -- Set of used packages
 }
 
 -- typechecking state that is restored in case of error
@@ -140,7 +141,8 @@ initPersistentState flags ai s = TStatePersistent {
     tsNextTyVar = 1000,
     tsWarns = [],
     tsAllowIncoherent = ai,
-    tsRecoveredErrors = []
+    tsRecoveredErrors = [],
+    tsUsed = S.empty
   }
 
 initRecoverState :: TStateRecover
@@ -151,8 +153,16 @@ initRecoverState = TStateRecover {
     tsSatStack = mkSizedStack [mkSizedStack []]
   }
 
-runTI :: Flags -> Bool -> SymTab -> TI a -> (Either [EMsg] a, [WMsg])
-runTI flags ai s m = (final_result, tsWarns pState)
+usedId :: Id -> TI ()
+usedId i = do
+  let addUsed i s = s { tsUsed = S.insert i (tsUsed s) }
+  lift (modify (addUsed (getPackageId i)))
+
+getPackageId :: Id -> Id
+getPackageId i = mkId noPosition (getIdQual i)
+
+runTI :: Flags -> Bool -> SymTab -> TI a -> (Either [EMsg] a, [WMsg], S.Set Id)
+runTI flags ai s m = (final_result, tsWarns pState, tsUsed pState)
   where (result, pState) = runState error_run
                                     (initPersistentState flags ai s)
         error_run = (runErrorT (runStateT m initRecoverState))
@@ -236,6 +246,7 @@ tiRecoveringFromErrorxx do_something _ = do_something
 twarn :: WMsg -> TI ()
 twarn w = lift (modify (addWarning w))
   where addWarning w s = s { tsWarns = w:(tsWarns s) }
+
 
 -- XXX maybe someday get rid of this function and replace with catchError
 handle :: TI a -> (EMsgs -> TI a) -> TI a
@@ -460,14 +471,18 @@ findCons ct i = do
     -- traceM ("findCons: " ++ show (ct,i))
     r <- getSymTab
     case findConVis r i of
-     Just [ConInfo ti _ a _ _] -> return (updAssumpPos i a, ti)
+     Just [ConInfo ti _ a _ _] -> do
+        usedId ti
+        return (updAssumpPos i a, ti)
      Just cs -> do
         s <- getSubst
         let ct' = apSub s ct
         case leftCon (expandSyn ct') of
          Nothing -> errorAtId (EConstrAmb (pfpString ct')) i
          Just di -> case [ a | ConInfo i' _ a _ _ <- cs, qualEq di i'] of
-                   [a] -> return (updAssumpPos i a, di)
+                   [a] -> do
+                     usedId di
+                     return (updAssumpPos i a, di)
                    []  -> errorAtId EUnboundCon i
                    _   -> internalError "findCons ambig"
      Nothing -> errorAtId EUnboundCon i
@@ -650,6 +665,8 @@ findFields struct_ty0 field_id = do
 updAssumpPos :: Id -> Assump -> Assump
 updAssumpPos i (i' :>: s) = setIdPosition (getIdPosition i) i' :>: s
 
+getAssumpId :: Assump -> Id
+getAssumpId (i :>: _) = i
 
 incrementSatStack :: TSSatElement -> TI ()
 incrementSatStack x = do
