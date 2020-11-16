@@ -331,9 +331,6 @@ compileFile errh flags binmap hashmap name_orig = do
 
 -------------------------------------------------------------------------
 
-getUsedPackages :: CPackage -> S.Set Id
-getUsedPackages _pkg = S.empty
-
 compilePackage ::
     ErrorHandle ->
     Flags ->
@@ -366,9 +363,6 @@ compilePackage
              ("genPackageName", iMkString $ getIdBaseString pkgId),
              ("testAssert",        iMkRealBool $ testAssert flags)
             ]
-
-    -- Cache the list of packages expressly imported
-    let imppkgs = S.fromList [i | CImpId _ i <- pkgImp]
 
     start flags DFimports
     -- Read imported signatures
@@ -440,9 +434,18 @@ compilePackage
 
     -- Type check and insert dictionaries
     start flags DFtypecheck
-    (mod, tcErrors) <- cTypeCheck errh flags symt minst
+    (mod, tcErrors, usedPkgs) <- cTypeCheck errh flags symt minst
     --putStr (ppReadable mod)
     t <- dump errh flags t DFtypecheck dumpnames mod
+
+    when (warnUnusedImports flags) $ do
+      let impPkgs = S.fromList [i | CImpId _ i <- pkgImp]
+      let unUsedPkgs = S.difference impPkgs usedPkgs
+      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
+      print $ S.toList $ impPkgs
+      print $ S.toList $ usedPkgs
+      print $ S.toList $ unUsedPkgs
+      bsWarning errh $ map toWErr $ S.toList unUsedPkgs
 
     --when (early flags) $ return ()
     let prefix = dirName name ++ "/"
@@ -534,15 +537,6 @@ compilePackage
     iPCheck flags symt imods "isimplify"
     t <- dump errh flags t DFisimplify dumpnames imods
     stats flags DFisimplify imods
-
-    when (warnUnusedImports flags) $ do
-      let usepkgs = getUsedPackages min
-      let unusedpkgs = S.difference imppkgs usepkgs
-      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      print $ S.toList $ imppkgs
-      print $ S.toList $ usepkgs
-      print $ S.toList $ unusedpkgs
-      bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     let orderGens :: IPackage HeapData -> [WrapInfo] -> [WrapInfo]
         orderGens (IPackage pid _ _ ds) gs =
@@ -646,12 +640,6 @@ compilePackage
     bi_sig <- genUserSign errh symt mctx
     -- Generate a type signature where everything is visible
     bo_sig <- genEverythingSign errh symt mctx
-
-    when (warnUnusedImports flags) $ do
-      let usepkgs = getUsedPackages min
-      let unusedpkgs = S.difference imppkgs usepkgs
-      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      when (not (S.null unusedpkgs)) $ bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     -- Generate binary version of the internal tree .bo file
     let bin_filename = putInDir (bdir flags) name binSuffix
@@ -2192,7 +2180,7 @@ compileCDefToIDef errh flags dumpnames symt ipkg def =
     t <- dump errh flags t DFctxreduce dumpnames cpkg_ctx
 
     start flags DFtypecheck
-    (cpkg_chk, tcErrors) <- cTypeCheck errh flags symt cpkg_ctx
+    (cpkg_chk, tcErrors, _) <- cTypeCheck errh flags symt cpkg_ctx
     t <- dump errh flags t DFtypecheck dumpnames cpkg_chk
 
     start flags DFsimplified

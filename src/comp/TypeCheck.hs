@@ -30,15 +30,15 @@ import CSubst(cSubstN)
 import CFreeVars(getFVC, getFTCC)
 import Util(separate, apFst, quote, fst3, snd3, thd)
 
-cTypeCheck :: ErrorHandle -> Flags -> SymTab -> CPackage -> IO (CPackage, Bool)
+cTypeCheck :: ErrorHandle -> Flags -> SymTab -> CPackage -> IO (CPackage, Bool, S.Set Id)
 cTypeCheck errh flags symtab (CPackage name exports imports fixs defns includes) = do
-    (typecheckedDefns, typeWarns, haveErrors) <- tiDefns errh symtab flags defns
+    (typecheckedDefns, typeWarns, haveErrors, usedPkgs) <- tiDefns errh symtab flags defns
     when (not (null typeWarns)) $ bsWarning errh typeWarns
     return (CPackage name exports imports fixs typecheckedDefns includes,
-            haveErrors)
+            haveErrors, usedPkgs)
 
 -- type check top-level definitions in parallel (since they are independent)
-tiDefns :: ErrorHandle -> SymTab -> Flags -> [CDefn] -> IO ([CDefn], [WMsg], Bool)
+tiDefns :: ErrorHandle -> SymTab -> Flags -> [CDefn] -> IO ([CDefn], [WMsg], Bool, S.Set Id)
 tiDefns errh s flags ds = do
   let ai = allowIncoherentMatches flags
   let checkDef d = (defErr, snd3 defTI, thd defTI)
@@ -62,8 +62,7 @@ tiDefns errh s flags ds = do
   when ((not (null double_error_msgs)) || (have_errors && not (enablePoisonPills flags))) $
       bsError errh (nub errors) -- the underyling error should be in errors
   when (have_errors && enablePoisonPills flags) $ bsErrorNoExit errh errors
-  putStrLn $ ppReadable $ S.unions usedPkgss
-  return (ds' ++ error_defs', concat wss, have_errors)
+  return (ds' ++ error_defs', concat wss, have_errors, S.unions usedPkgss)
 
 nullAssump :: [Assump]
 nullAssump = []
