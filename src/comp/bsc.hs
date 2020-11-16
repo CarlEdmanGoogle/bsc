@@ -14,7 +14,7 @@ import System.Directory(getDirectoryContents, doesFileExist, getCurrentDirectory
 import System.Time(getClockTime, ClockTime(TOD)) -- XXX: from old-time package
 import Data.Char(isSpace, toLower, ord)
 import Data.List(intersect, nub, partition, intersperse, sort,
-            isPrefixOf, isSuffixOf, unzip5, intercalate, sortOn)
+            isPrefixOf, isSuffixOf, unzip5, intercalate)
 import Data.Time.Clock.POSIX(getPOSIXTime)
 import Data.Maybe(isJust, isNothing {-, fromMaybe-})
 import Numeric(showOct)
@@ -641,7 +641,7 @@ compilePackage
       let usepkgs = getUsedPackages min
       let unusedpkgs = S.difference imppkgs usepkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      bsWarning errh $ map toWErr $ S.toList unusedpkgs
+      when (not (S.null unusedpkgs)) $ bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     -- Generate binary version of the internal tree .bo file
     let bin_filename = putInDir (bdir flags) name binSuffix
