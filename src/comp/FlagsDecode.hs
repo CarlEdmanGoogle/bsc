@@ -630,7 +630,7 @@ defaultFlags bluespecdir = Flags {
         warnActionShadowing = True,
         warnMethodUrgency = True,
         warnUndetPred = False,
-        warnUnusedImports = False
+        warnUnusedImports = True
         }
 
 -- Default path value replaced in adjustFinalFlags

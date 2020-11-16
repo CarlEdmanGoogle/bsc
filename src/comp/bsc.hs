@@ -28,7 +28,6 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import ListMap(lookupWithDefault)
-import ListUtil(listDifference)
 import SCC(scc)
 
 -- utility libs
@@ -331,8 +330,8 @@ compileFile errh flags binmap hashmap name_orig = do
 
 -------------------------------------------------------------------------
 
-getUsedPackages :: CPackage -> [Id]
-getUsedPackages pkg = []
+getUsedPackages :: CPackage -> S.Set Id
+getUsedPackages _pkg = S.empty
 
 compilePackage ::
     ErrorHandle ->
@@ -368,7 +367,7 @@ compilePackage
             ]
 
     -- Cache the list of packages expressly imported
-    let imppkgs = sortOn getIdString [i | CImpId _ i <- pkgImp]
+    let imppkgs = S.fromList [i | CImpId _ i <- pkgImp]
 
     start flags DFimports
     -- Read imported signatures
@@ -639,13 +638,10 @@ compilePackage
     bo_sig <- genEverythingSign errh symt mctx
 
     when (warnUnusedImports flags) $ do
-      let onIdString i j = getIdString i == getIdString j
-      let usepkgs = sortOn getIdString $ getUsedPackages min
-      let unusedpkgs = listDifference onIdString imppkgs usepkgs
+      let usepkgs = getUsedPackages min
+      let unusedpkgs = S.difference imppkgs usepkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      print "--- XXX ---"
-      mapM_ print dfns
-      bsWarning errh $ map toWErr $ sort unusedpkgs
+      bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     -- Generate binary version of the internal tree .bo file
     let bin_filename = putInDir (bdir flags) name binSuffix
