@@ -25,6 +25,7 @@ import Control.Concurrent(forkIO)
 import Control.Concurrent.MVar(newEmptyMVar, putMVar, takeMVar)
 import qualified Control.Exception as CE
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 import ListMap(lookupWithDefault)
 import ListUtil(listDifference)
@@ -534,13 +535,6 @@ compilePackage
     t <- dump errh flags t DFisimplify dumpnames imods
     stats flags DFisimplify imods
 
-    when (warnUnusedImports flags) $ do
-      let onIdString i j = getIdString i == getIdString j
-      let usepkgs = sortOn getIdString $ getUsedPackages min
-      let unusedpkgs = listDifference onIdString imppkgs usepkgs
-      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      bsWarning errh $ map toWErr $ sort unusedpkgs
-
     let orderGens :: IPackage HeapData -> [WrapInfo] -> [WrapInfo]
         orderGens (IPackage pid _ _ ds) gs =
                 --trace (ppReadable (gis, g, os)) $
@@ -643,6 +637,15 @@ compilePackage
     bi_sig <- genUserSign errh symt mctx
     -- Generate a type signature where everything is visible
     bo_sig <- genEverythingSign errh symt mctx
+
+    when (warnUnusedImports flags) $ do
+      let onIdString i j = getIdString i == getIdString j
+      let usepkgs = sortOn getIdString $ getUsedPackages min
+      let unusedpkgs = listDifference onIdString imppkgs usepkgs
+      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
+      print "--- XXX ---"
+      mapM_ print dfns
+      bsWarning errh $ map toWErr $ sort unusedpkgs
 
     -- Generate binary version of the internal tree .bo file
     let bin_filename = putInDir (bdir flags) name binSuffix

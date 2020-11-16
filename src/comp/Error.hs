@@ -517,6 +517,7 @@ data ErrMsg =
         | EPortsSameName [(String,Position,String)] -- ^ port name, position, arg
         | EPortKeywordClash String      -- ^ port name
         | EPortNotValidIdent String     -- ^ port name
+        | WUnusedImport String          -- ^ import of package that is not used
 
         | EClockedByBadName String [String] -- ^ bad name, available names
         | EResetByBadName String [String] -- ^ bad name, available names
@@ -1190,7 +1191,6 @@ data ErrMsg =
         | EConMismatchNumArgs  String{-String-}      Integer Integer
         | EPartialConMismatchNumArgs  String String{-String-}Integer Integer Integer
         
-        | WUnusedImport String          -- ^ import of package that is not used
         deriving (Eq,Show)
 
 instance PPrint ErrMsg where
