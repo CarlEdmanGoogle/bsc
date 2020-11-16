@@ -331,8 +331,8 @@ compileFile errh flags binmap hashmap name_orig = do
 
 -------------------------------------------------------------------------
 
-getUsedPackages :: CPackage -> [Id]
-getUsedPackages pkg = []
+getUsedPackages :: CPackage -> S.Set Id
+getUsedPackages _pkg = S.empty
 
 compilePackage ::
     ErrorHandle ->
@@ -536,9 +536,12 @@ compilePackage
     stats flags DFisimplify imods
 
     when (warnUnusedImports flags) $ do
-      let usepkgs = S.fromList $ getUsedPackages min
+      let usepkgs = getUsedPackages min
       let unusedpkgs = S.difference imppkgs usepkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
+      print $ S.toList $ imppkgs
+      print $ S.toList $ usepkgs
+      print $ S.toList $ unusedpkgs
       bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     let orderGens :: IPackage HeapData -> [WrapInfo] -> [WrapInfo]
@@ -643,6 +646,12 @@ compilePackage
     bi_sig <- genUserSign errh symt mctx
     -- Generate a type signature where everything is visible
     bo_sig <- genEverythingSign errh symt mctx
+
+    when (warnUnusedImports flags) $ do
+      let usepkgs = getUsedPackages min
+      let unusedpkgs = S.difference imppkgs usepkgs
+      let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
+      when (not (S.null unusedpkgs)) $ bsWarning errh $ map toWErr $ S.toList unusedpkgs
 
     -- Generate binary version of the internal tree .bo file
     let bin_filename = putInDir (bdir flags) name binSuffix
