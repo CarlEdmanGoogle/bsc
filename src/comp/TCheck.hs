@@ -819,7 +819,7 @@ tiExpr as td exp@(CmoduleVerilog name ui clks rsts args fields sch ps) = do
 --    tyM1 <- mapM (\ e -> newTVar "tiExpr CmoduleVerilog 4" KStar e) es
 --    tyM2 <- mapM (\ t -> newTVar "tiExpr CmoduleVerilog 5" KStar t) ts
     case leftCon (expandSyn (apSub s v)) of
-     Just ti | mfs /= Nothing ->
+     Just ti | mfs /= Nothing -> -- TODO(carledman): Recheck for id usage
                 -- check for extra fields first
                 case fieldnames \\ fs of
                   i:_ -> err (getIdPosition i, EForeignModNotField

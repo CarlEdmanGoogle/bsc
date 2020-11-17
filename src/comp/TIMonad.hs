@@ -468,6 +468,7 @@ errorAtId econ i =
 findCons :: Type -> Id -> TI (Assump, Id)
 findCons ct i = do
     -- traceM ("findCons: " ++ show (ct,i))
+    usedId i
     r <- getSymTab
     case findConVis r i of
      Just [ConInfo ti _ a _ _] -> do
@@ -478,9 +479,10 @@ findCons ct i = do
         let ct' = apSub s ct
         case leftCon (expandSyn ct') of
          Nothing -> errorAtId (EConstrAmb (pfpString ct')) i
-         Just di -> case [ a | ConInfo i' _ a _ _ <- cs, qualEq di i'] of
-                   [a] -> do
+         Just di -> case [ (i', a) | ConInfo i' _ a _ _ <- cs, qualEq di i'] of
+                   [(i',a)] -> do
                      usedId di
+                     usedId i'
                      return (updAssumpPos i a, di)
                    []  -> errorAtId EUnboundCon i
                    _   -> internalError "findCons ambig"
@@ -488,6 +490,7 @@ findCons ct i = do
 
 findTyCon :: Id -> TI TyCon
 findTyCon i = do
+    usedId i
     r <- getSymTab
     case findType r i of
      Just (TypeInfo (Just i') k _ ts@(TItype _ t)) -> do
@@ -550,6 +553,7 @@ numEqCls = findCls (CTypeclass idNumEq)
 findFields :: Type -> Id -> TI (Assump, Id, Int)
 findFields struct_ty0 field_id = do
     --traceM("findFields: " ++ ppReadable (struct_ty, field_id))
+    usedId field_id
     symt <- getSymTab
 
     -- Figure out what we know about the struct type
@@ -645,7 +649,9 @@ findFields struct_ty0 field_id = do
                                                 fi_arity = n,
                                                 fi_assump = a }) <- fs,
                                     i == qtc ] of
-                  [(_, a, n)] -> return (updAssumpPos field_id a, qtc, n)
+                  [(_, a, n)] -> do
+                    usedId qtc
+                    return (updAssumpPos field_id a, qtc, n)
                   [] -> errorAtId (ENotField (pfpString qtc)) field_id
                   xs -> internalError ("findFields ambig: " ++
                                        ppReadable (struct_ty, field_id, xs))
@@ -655,10 +661,11 @@ findFields struct_ty0 field_id = do
             Nothing ->
                 -- there are no structs with this field
                 errorAtId EUnboundField field_id
-            Just [FieldInfo {fi_id = qtc, fi_arity = n, fi_assump = a }] ->
+            Just [FieldInfo {fi_id = qtc, fi_arity = n, fi_assump = a }] -> do
                 -- there is only one struct with this field
                 -- if the expression is not that type, the user will get a
                 -- mismatch error later
+                usedId qtc -- Could be overinclusive if user gets mismatch error later.
                 return (updAssumpPos field_id a, qtc, n)
             Just fs ->
                 let tis = map (pfpString . fi_id) fs

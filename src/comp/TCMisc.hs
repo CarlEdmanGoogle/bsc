@@ -689,8 +689,9 @@ pickJust mxs = foldr pickL Nothing mxs
 -------
 
 findAssump :: Id -> [Assump] -> TI Assump
-findAssump i as =
-    case [ sc | (i':>:sc) <- as, i==i' ] of
+findAssump i as = do
+  usedId i -- TODO(carledman): Cleanup indent
+  case [ sc | (i':>:sc) <- as, i==i' ] of
     [] -> do
         s <- getSymTab
         case findVar s i of

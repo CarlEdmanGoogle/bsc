@@ -442,10 +442,7 @@ compilePackage
       let impPkgs = S.fromList [i | CImpId _ i <- pkgImp]
       let unUsedPkgs = S.difference impPkgs usedPkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
-      print $ S.toList $ impPkgs
-      print $ S.toList $ usedPkgs
-      print $ S.toList $ unUsedPkgs
-      bsWarning errh $ map toWErr $ S.toList unUsedPkgs
+      when (not (null unUsedPkgs)) $ bsWarning errh $ map toWErr $ S.toList unUsedPkgs
 
     --when (early flags) $ return ()
     let prefix = dirName name ++ "/"
