@@ -5,6 +5,12 @@
 # Ignore editor backup files
 *~
 
+# Ignore interface files
+*.bo
+
+# Ignore tags files
+TAGS
+
 # Ignore the inst directory
 inst
 

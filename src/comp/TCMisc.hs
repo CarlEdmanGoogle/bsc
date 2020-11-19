@@ -7,7 +7,7 @@ module TCMisc(
         mkSchemeNoBVs, rmPatLit, rmQualLit, expandSynN, expandFullType,
         unify, unifyNoEq,
         mkVPred, mkVPredNoNewPos, mkVPredFromPred, toPredWithPositions, toPred,
-        defaultClasses,
+        defaultClasses, usedIdsCQType,
         checkForAmbiguousPreds,
         propagateFunDeps, isReduciblePred
               ) where
@@ -40,6 +40,7 @@ import PreIds
 import StdPrel(isPreClass)
 import CSyntax(CDefl(..), CExpr(..), CPat(..), CQual(..),
                CLiteral(..), cTApply, cVApply, anyTExpr)
+import CFreeVars(getFQTyCons)
 import Literal
 import IntLit
 import SymTab
@@ -707,6 +708,8 @@ findAssump i as = do
 
 -------
 
+usedIdsCQType :: CQType -> TI ()
+usedIdsCQType qt = mapM_ usedId $ S.toList $ getFQTyCons qt
 
 mkSchemeNoBVs :: CQType -> TI Scheme
 mkSchemeNoBVs cqt = do
@@ -714,14 +717,18 @@ mkSchemeNoBVs cqt = do
     bvs <- getBoundTVs
     case convCQType sy cqt of
      Left emsg -> err emsg
-     Right qt -> return (quantify (tv qt \\ bvs) qt)
+     Right qt -> do
+       usedIdsCQType $ qualTypeToCQType qt
+       return (quantify (tv qt \\ bvs) qt)
 
 mkQualType :: CQType -> TI (Qual Type)
 mkQualType cqt = do
     s <- getSymTab
     case convCQType s cqt of
      Left emsg -> err emsg
-     Right qt -> return qt
+     Right qt -> do
+       usedIdsCQType $ qualTypeToCQType qt
+       return qt
 
 -------
 

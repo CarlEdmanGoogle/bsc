@@ -349,7 +349,7 @@ compilePackage
     binmap0
     hashmap0
     name -- String --
-    min@(CPackage pkgId _ pkgImp _ pkgDfn _) = do
+    min@(CPackage pkgId pkgExp pkgImp _ pkgDfn _) = do
 
     clkTime <- getClockTime
     epochTime <- getPOSIXTime
@@ -440,7 +440,17 @@ compilePackage
 
     when (warnUnusedImports flags) $ do
       let impPkgs = S.fromList [i | CImpId _ i <- pkgImp]
-      let unUsedPkgs = S.difference impPkgs usedPkgs
+      let expids es = S.fromList $
+            -- TODO(carledman): Turn into explicit package IDs
+            [i | CExpVar i <- es] ++ -- export a variable identifier
+            [i | CExpCon i <- es] ++ -- export a constructor
+            [i | CExpConAll i <- es] ++ -- export an identifier and constructors
+            [i | CExpPkg i <- es] -- export an entire package
+      let unUsedPkgs = case pkgExp of
+            -- Left exps = export only exps
+            Left exps -> S.difference (S.difference impPkgs usedPkgs) (expids exps)
+            -- Right exps = export everything but exps
+            Right exps -> S.difference (S.intersection impPkgs (expids exps)) usedPkgs
       let toWErr i = (getIdPosition i, WUnusedImport (getIdString i))
       when (not (null unUsedPkgs)) $ bsWarning errh $ map toWErr $ S.toList unUsedPkgs
 
