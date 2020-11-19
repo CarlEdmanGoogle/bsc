@@ -48,7 +48,7 @@ import IOUtil(progArgs)
 import Util
 import SCC(tsort)
 import ListUtil(mapFst, mapSnd)
-import Debug.Trace(traceM)
+import Debug.Trace(traceM, traceShow)
 
 doTraceKI :: Bool
 doTraceKI = "-trace-kind-inference" `elem` progArgs
@@ -917,8 +917,9 @@ findClass r i = do
 -- Turn free kind variables into *
 groundT :: K.KSubst -> Type -> Type
 groundT s (TVar (TyVar i n k)) = TVar (TyVar i n (K.groundK (K.apKSu s k)))
-groundT s c@(TCon _) = c
+groundT _ c@(TCon _) = c
 groundT s (TAp l r) = TAp (groundT s l) (groundT s r)
+groundT _ g@(TGen _ _) = g -- TODO(carledman): Ask Ravi about correctness
 groundT _ _ = internalError "MakeSymTab.groundT"
 
 -----
