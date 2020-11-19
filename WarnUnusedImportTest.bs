@@ -1,0 +1,6 @@
+package WarnUnusedImportTest(idSTRAM) where
+
+import SyncSRAM
+
+idSTRAM :: SyncSRAMS lat adrs dtas -> SyncSRAMS lat adrs dtas
+idSTRAM s = s

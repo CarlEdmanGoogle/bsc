@@ -109,17 +109,17 @@ tiOneDef d@(Ctype idk ids ct) = do
     TyCon _ _ (TItype _ ty) -> usedIdsCQType (CQType [] ty)
     _ -> return ()
   return d
--- tiOneDef d@(Cdata visible idk type_ids original_summands internal_summands derivings) = do
---   -- TODO(carledman): Deal with these constructors too for finding used types
---   -- look up in symtab,  TIData, get constructor names, look up in symtab,
---   -- visible :: Bool, name :: IdK type_ids :: [Id], original_summands :: COSummands, cd_internal_summands :: CSummands, derivings :: [CTypeclass]
---   return d
--- tiOneDef d@(Cstruct visible subtype idk type_ids fields type_classes) = do
---   -- TODO(carledman): Deal with these constructors too for finding used types
---   -- look up in symtab,  TIData, get constructor names, look up in symtab,
---   -- Bool StructSubTyp IdK [Id] CFields [CTypeclass]
---   -- first [Id] are the names of this definition's argument type variables;  last [CTypeclass] are derived classes
---  return d
+tiOneDef d@(Cdata visible idk type_ids original_summands internal_summands derivings) = do
+  -- TODO(carledman): Deal with these constructors too for finding used types
+  -- look up in symtab,  TIData, get constructor names, look up in symtab,
+  -- visible :: Bool, name :: IdK type_ids :: [Id], original_summands :: COSummands, cd_internal_summands :: CSummands, derivings :: [CTypeclass]
+  return d
+tiOneDef d@(Cstruct visible subtype idk type_ids fields type_classes) = do
+  -- TODO(carledman): Deal with these constructors too for finding used types
+  -- look up in symtab,  TIData, get constructor names, look up in symtab,
+  -- Bool StructSubTyp IdK [Id] CFields [CTypeclass]
+  -- first [Id] are the names of this definition's argument type variables;  last [CTypeclass] are derived classes
+ return d
 tiOneDef d = return d
 
 -- Force the substitution to make sure we don't drag around cruft.
